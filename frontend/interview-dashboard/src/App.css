@@ -30,6 +30,51 @@
   color: #52606d;
 }
 
+.dashboard__header {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.dashboard__header-text {
+  flex: 1 1 280px;
+}
+
+.dashboard__action-button {
+  background: linear-gradient(135deg, #2563eb, #1d4ed8);
+  color: #fff;
+  border: none;
+  border-radius: 14px;
+  padding: 12px 20px;
+  font-size: 0.95rem;
+  font-weight: 600;
+  cursor: pointer;
+  box-shadow:
+    0 10px 25px rgba(37, 99, 235, 0.35),
+    0 6px 12px rgba(37, 99, 235, 0.2);
+  transition:
+    transform 0.15s ease,
+    box-shadow 0.15s ease,
+    filter 0.15s ease;
+}
+
+.dashboard__action-button:hover:not(:disabled) {
+  transform: translateY(-1px);
+  box-shadow:
+    0 16px 32px rgba(37, 99, 235, 0.3),
+    0 8px 16px rgba(37, 99, 235, 0.2);
+  filter: brightness(1.05);
+}
+
+.dashboard__action-button:disabled {
+  cursor: not-allowed;
+  opacity: 0.6;
+  box-shadow: none;
+  background: linear-gradient(135deg, #94a3b8, #64748b);
+}
+
 .dashboard__stats {
   display: grid;
   gap: 16px;
@@ -145,6 +190,157 @@ tbody tr:hover {
 
 .dashboard--error h2 {
   margin-bottom: 12px;
+}
+
+.scheduler-modal__backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.45);
+  backdrop-filter: blur(4px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  z-index: 1000;
+}
+
+.scheduler-modal {
+  background: #ffffff;
+  border-radius: 20px;
+  padding: 24px;
+  width: min(520px, 95vw);
+  box-shadow:
+    0 24px 60px rgba(15, 23, 42, 0.18),
+    0 12px 24px rgba(15, 23, 42, 0.12);
+  display: grid;
+  gap: 16px;
+  color: #0f172a;
+}
+
+.scheduler-modal__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.scheduler-modal__header h2 {
+  margin: 0;
+  font-size: 1.4rem;
+}
+
+.scheduler-modal__close {
+  background: transparent;
+  border: none;
+  font-size: 1.6rem;
+  line-height: 1;
+  cursor: pointer;
+  color: #475569;
+  padding: 4px 8px;
+  border-radius: 8px;
+  transition: background 0.15s ease;
+}
+
+.scheduler-modal__close:hover {
+  background: rgba(226, 232, 240, 0.6);
+}
+
+.scheduler-modal__hint {
+  margin: 0;
+  color: #475569;
+  font-size: 0.95rem;
+}
+
+.scheduler-modal__empty {
+  padding: 12px 16px;
+  border-radius: 12px;
+  background: rgba(226, 232, 240, 0.6);
+  color: #475569;
+  font-size: 0.95rem;
+}
+
+.scheduler-modal__form {
+  display: grid;
+  gap: 14px;
+}
+
+.scheduler-modal__form label {
+  display: grid;
+  gap: 8px;
+  font-size: 0.9rem;
+  color: #475569;
+}
+
+.scheduler-modal__form select,
+.scheduler-modal__form input[type="datetime-local"],
+.scheduler-modal__form input[type="text"] {
+  border-radius: 12px;
+  border: 1px solid #cbd5f5;
+  padding: 10px 12px;
+  font-size: 1rem;
+  color: #1e293b;
+  background: #f8fafc;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.scheduler-modal__form select:focus,
+.scheduler-modal__form input[type="datetime-local"]:focus,
+.scheduler-modal__form input[type="text"]:focus {
+  outline: none;
+  border-color: #2563eb;
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.15);
+}
+
+.scheduler-modal__actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+  margin-top: 8px;
+}
+
+.scheduler-modal__secondary,
+.scheduler-modal__primary {
+  border-radius: 12px;
+  padding: 10px 18px;
+  font-size: 0.95rem;
+  font-weight: 600;
+  border: none;
+  cursor: pointer;
+  transition: transform 0.15s ease, box-shadow 0.15s ease, filter 0.15s ease;
+}
+
+.scheduler-modal__secondary {
+  background: rgba(148, 163, 184, 0.18);
+  color: #334155;
+}
+
+.scheduler-modal__primary {
+  background: linear-gradient(135deg, #2563eb, #1e3a8a);
+  color: #ffffff;
+  box-shadow:
+    0 12px 28px rgba(30, 58, 138, 0.25),
+    0 6px 14px rgba(30, 58, 138, 0.18);
+}
+
+.scheduler-modal__secondary:hover:not(:disabled),
+.scheduler-modal__primary:hover:not(:disabled) {
+  transform: translateY(-1px);
+}
+
+.scheduler-modal__secondary:disabled,
+.scheduler-modal__primary:disabled {
+  cursor: not-allowed;
+  opacity: 0.6;
+  box-shadow: none;
+}
+
+.scheduler-modal__error {
+  background: rgba(248, 113, 113, 0.15);
+  border: 1px solid rgba(239, 68, 68, 0.35);
+  color: #b91c1c;
+  padding: 10px 12px;
+  border-radius: 10px;
+  font-size: 0.9rem;
 }
 
 @media (max-width: 768px) {
