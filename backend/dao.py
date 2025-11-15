@@ -192,7 +192,7 @@ class InterviewDAO:
             with connection.cursor(cursor_factory=RealDictCursor) as cursor:
                 cursor.execute(
                     """
-                    SELECT id, full_name, email, phone, position_applied, created_at
+                    SELECT id, full_name, email, phone, position, created_at
                     FROM candidates
                     ORDER BY created_at DESC
                     """

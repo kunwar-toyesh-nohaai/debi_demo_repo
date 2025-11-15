@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useState } from "react";
+ import React, { useCallback, useEffect, useMemo, useState } from "react";
 
 type Candidate = {
   id: number;
@@ -95,7 +95,10 @@ const InterviewDashboard: React.FC = () => {
 
       try {
         const dashboard = await fetchDashboardData();
-        if (isMounted) setData(dashboard);
+        if (isMounted) {
+          setData(dashboard);
+          console.log("Candidate data:", dashboard.candidates); // ADDED THIS LINE
+        }
       } catch (fetchError) {
         if (isMounted) {
           setError(fetchError instanceof Error ? fetchError.message : "Unknown error");
@@ -450,4 +453,3 @@ const ScheduleInterviewModal: React.FC<{
 };
 
 export default InterviewDashboard;
-

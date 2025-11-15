@@ -1,1 +1,3 @@
 .env
+text_files/*
+agent-debugger/*
