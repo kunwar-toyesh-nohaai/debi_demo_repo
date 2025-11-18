@@ -8,6 +8,11 @@ from typing import Optional, Tuple
 
 logger = logging.getLogger("agent_debugger.confirmation")
 
+
+class RestartFlowException(Exception):
+    """Exception raised when user declines a confirmation, triggering a flow restart."""
+    pass
+
 # Common conversational intents
 AFFIRMATIVE_CUES = {
     "y",
@@ -196,22 +201,22 @@ def confirm_file_write(file_path: str, new_content: str, issue_summary: Optional
     summary_block = ""
     if issue_summary:
         summary_block = f"""
-Here's how the agent described the underlying issue:
+Here's how I described the underlying issue:
 {issue_summary.strip()}
 """
     else:
-        summary_block = "\n(The agent did not provide any additional context about the issue.)\n"
+        summary_block = "\n(I didn't provide any additional context about the issue.)\n"
     
     suggestion_intro = f"""
-The agent believes the issue you reported stems from `{file_path}`.
+I believe the issue you reported stems from `{file_path}`.
 {summary_block}
-Would you like to review its suggestions before we touch the file?
+Would you like to review my suggestions before I touch the file?
 """
     wants_suggestions = ask_confirmation(suggestion_intro, default=True)
     
     if not wants_suggestions:
         logger.warning(f"User declined suggestions for: {file_path}")
-        return False, "User declined to review the suggested fix"
+        raise RestartFlowException("User declined to review the suggested fix")
     
     suggestions_text = f"""
 Suggested plan for `{file_path}`:
@@ -237,7 +242,7 @@ Should I go ahead and apply these changes now?
         return True, None
     else:
         logger.warning(f"User rejected file write for: {file_path}")
-        return False, "File write cancelled by user"
+        raise RestartFlowException("User declined to apply the suggested fix")
 
 
 def confirm_git_commit(commit_message: str) -> Tuple[bool, Optional[str]]:
@@ -325,5 +330,5 @@ Does that sound good, or would you prefer to hold off?
         return True, None
     else:
         logger.warning(f"User rejected git commit with message: {commit_message}")
-        return False, "Git commit cancelled by user"
+        raise RestartFlowException("User declined git commit confirmation")
 

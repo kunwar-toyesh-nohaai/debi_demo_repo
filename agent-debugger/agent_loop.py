@@ -12,7 +12,7 @@ from typing import List, Any, Dict, Optional
 from tools.file_tools import list_directory, read_file, write_file as _write_file
 from tools.git_tools import run_git_command, commit_changes as _commit_changes
 from prompts import SYSTEM_PROMPT
-from confirmation_handler import confirm_file_write, confirm_git_commit
+from confirmation_handler import confirm_file_write, confirm_git_commit, RestartFlowException
 
 # Set up logger
 logger = logging.getLogger("agent_debugger")
@@ -224,15 +224,20 @@ def write_file_wrapper(input_str: str) -> str:
         logger.debug("No issue summary provided with write_file request")
     
     # Ask for confirmation before writing
-    confirmed, error = confirm_file_write(path, content, issue_summary)
-    
-    if not confirmed:
-        if error:
-            logger.error(f"File write cancelled: {error}")
-            return f"File write cancelled: {error}"
-        else:
-            logger.warning("File write cancelled by user")
-            return "File write cancelled by user. No changes were made."
+    # This may raise RestartFlowException if user declines
+    try:
+        confirmed, error = confirm_file_write(path, content, issue_summary)
+        
+        if not confirmed:
+            if error:
+                logger.error(f"File write cancelled: {error}")
+                return f"File write cancelled: {error}"
+            else:
+                logger.warning("File write cancelled by user")
+                return "File write cancelled by user. No changes were made."
+    except RestartFlowException:
+        # Re-raise to let main() handle the restart
+        raise
     
     # User confirmed, proceed with write
     logger.info(f"User confirmed, proceeding with file write to: {path}")
@@ -259,15 +264,20 @@ def commit_changes_wrapper(commit_message: str) -> str:
     logger.info(f"Commit message: {commit_message}")
     
     # Ask for confirmation before committing
-    confirmed, error = confirm_git_commit(commit_message)
-    
-    if not confirmed:
-        if error:
-            logger.error(f"Git commit cancelled: {error}")
-            return f"Git commit cancelled: {error}"
-        else:
-            logger.warning("Git commit cancelled by user")
-            return "Git commit cancelled by user. No changes were committed."
+    # This may raise RestartFlowException if user declines
+    try:
+        confirmed, error = confirm_git_commit(commit_message)
+        
+        if not confirmed:
+            if error:
+                logger.error(f"Git commit cancelled: {error}")
+                return f"Git commit cancelled: {error}"
+            else:
+                logger.warning("Git commit cancelled by user")
+                return "Git commit cancelled by user. No changes were committed."
+    except RestartFlowException:
+        # Re-raise to let main() handle the restart
+        raise
     
     # User confirmed, proceed with commit
     logger.info(f"User confirmed, proceeding with git commit")
@@ -462,6 +472,9 @@ def run_agent(agent: AgentExecutor, bug_description: str) -> str:
             logger.warning(f"Unexpected response type: {type(response)}")
             logger.info(f"Full response: {response}")
             return str(response)
+    except RestartFlowException:
+        # Re-raise to let main() handle the restart
+        raise
     except Exception as e:
         error_msg = f"Error running agent: {str(e)}"
         logger.error("=" * 80)

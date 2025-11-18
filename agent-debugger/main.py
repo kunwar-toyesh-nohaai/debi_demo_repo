@@ -11,7 +11,12 @@ from agent_loop import (
     reset_applied_file_changes,
 )
 from logging_config import setup_logging
-from confirmation_handler import confirm_git_commit
+from confirmation_handler import (
+    confirm_git_commit, 
+    RestartFlowException,
+    AFFIRMATIVE_CUES,
+    NEGATIVE_CUES
+)
 from tools.git_tools import commit_changes as _commit_changes
 
 # Set up logging first
@@ -103,7 +108,8 @@ def prompt_commit_for_pending_changes(agent_summary: Optional[str]) -> None:
             logger.info("Commit cancelled by user.")
             print("Commit cancelled. Changes remain uncommitted.")
         reset_applied_file_changes()
-        return
+        # Raise exception to restart the flow
+        raise RestartFlowException("User declined commit confirmation")
 
     logger.info("User confirmed commit from post-run prompt.")
     result = _commit_changes(commit_message)
@@ -120,98 +126,188 @@ def main():
     logger.info("AI Code Debugging Agent")
     logger.info("=" * 60)
     logger.info("")
-    # Step 1 & 2: greet and capture the bug description (with a default scenario)
-    print("Hi, I'm Debi. I do full stack development. What would you like me to help you with?")
-    print()
-    print("Please describe the issue (press Enter twice to finish).")
-    print()
-    lines: List[str] = []
-    try:
-        while True:
-            line = input()
-            if line == "" and lines and lines[-1] == "":
-                break
-            lines.append(line)
-    except EOFError:
-        pass
-    bug_description = "\n".join(lines).strip()
     
-    if not bug_description:
-        error_msg = "Error: Bug description cannot be empty."
-        logger.error(error_msg)
-        print(error_msg)
-        sys.exit(1)
-    
-    logger.info(f"Bug description received: {len(bug_description)} characters")
-    logger.debug(f"Bug description: {bug_description}")
-    
-    # Step 3: capture the repo URL (simulated)
-    print()
-    print("Can you give me the URL to the codebase that you're referring to?")
-    repo_url = ""
-    while not repo_url:
-        repo_url = input("Repository URL: ").strip()
-        if not repo_url:
-            print("I'll need the repository URL to continue.")
-    logger.info(f"Repo URL provided (simulated): {repo_url}")
-    
-    # Step 4 & 5: ask for credential usage (always assumed yes for emulation)
-    print()
-    print("Okay, can I use your credentials in my context to pull the repo?")
-    input("Type 'yes' to confirm and press Enter: ")
-    print("Great, thanks for granting access.")
-    logger.info("Repo access permission granted (simulated).")
-    
-    # Step 6: simulate pulling the repository before initializing the agent
-    print()
-    print(f"Perfect, let me pull {repo_url} and start debugging (simulated).")
-    logger.info(f"Simulated repository pull for {repo_url}")
-    print()
-    logger.info("Initializing agent...")
-    print("Initializing agent...")
-    print()
-    
-    # Create agent
-    try:
-        agent = create_agent(api_key)
-        logger.info("Agent created successfully")
-    except Exception as e:
-        error_msg = f"Error creating agent: {e}"
-        logger.exception(error_msg)
-        print(error_msg)
-        sys.exit(1)
-    
-    # Run agent
-    print("Agent is analyzing the bug. This may take a moment...")
-    logger.info("Starting agent execution...")
-    print()
-    
-    try:
-        response = run_agent(agent, bug_description)
-        logger.info("Agent execution completed")
-        print("=" * 60)
-        print("Here's what I found. Want to see the suggested fix?")
-        print("=" * 60)
-        input("Press Enter to view the diagnosis and suggested fix: ")
-        print()
-        logger.info("Agent Response:")
-        logger.info(response)
-        print(response)
-        print()
-        # After agent output, prompt for commit if files were modified
-        prompt_commit_for_pending_changes(response)
-    except KeyboardInterrupt:
-        error_msg = "\n\nOperation cancelled by user."
-        logger.warning("Operation cancelled by user (KeyboardInterrupt)")
-        print(error_msg)
-        reset_applied_file_changes()
-        sys.exit(0)
-    except Exception as e:
-        error_msg = f"Error running agent: {e}"
-        logger.exception(error_msg)
-        print(error_msg)
-        reset_applied_file_changes()
-        sys.exit(1)
+    while True:
+        try:
+            # Step 1 & 2: greet and capture the bug description
+            print("Hi, I'm Debi. I do full stack development. What would you like me to help you with?")
+            print()
+            print("Please describe the issue (press Enter twice to finish).")
+            print()
+            lines: List[str] = []
+            try:
+                while True:
+                    line = input()
+                    if line == "" and lines and lines[-1] == "":
+                        break
+                    lines.append(line)
+            except EOFError:
+                pass
+            bug_description = "\n".join(lines).strip()
+            
+            if not bug_description:
+                error_msg = "Error: Bug description cannot be empty."
+                logger.error(error_msg)
+                print(error_msg)
+                sys.exit(1)
+            
+            logger.info(f"Bug description received: {len(bug_description)} characters")
+            logger.debug(f"Bug description: {bug_description}")
+            
+            # Step 3: capture the repo URL (simulated)
+            print()
+            print("Can you give me the URL to the codebase that you're referring to?")
+            repo_url_input = input("Repository URL: ").strip()
+            
+            # Check if user actually provided a repo URL or declined
+            if not repo_url_input:
+                logger.info("User did not provide repository URL")
+                print()
+                print("I'll need the repository URL to continue. Let me start over.")
+                print()
+                raise RestartFlowException("User did not provide repository URL")
+            
+            # Check if input looks like a valid git repository URL
+            normalized_repo_input = repo_url_input.lower()
+            looks_like_url = (
+                repo_url_input.startswith("http://") or
+                repo_url_input.startswith("https://") or
+                repo_url_input.startswith("git@") or
+                repo_url_input.startswith("git://") or
+                ("github.com" in normalized_repo_input) or
+                ("gitlab.com" in normalized_repo_input) or
+                ("bitbucket.org" in normalized_repo_input) or
+                (".git" in normalized_repo_input)
+            )
+            
+            # Check if user declined (said "no" or similar) - but only if it doesn't look like a URL
+            declined = False
+            if not looks_like_url:
+                for cue in NEGATIVE_CUES:
+                    if cue in normalized_repo_input:
+                        declined = True
+                        break
+            
+            if declined:
+                logger.info("User declined to provide repository URL")
+                print()
+                print("I'll need the repository URL to continue. Let me start over.")
+                print()
+                raise RestartFlowException("User declined to provide repository URL")
+            
+            # If it doesn't look like a URL and wasn't declined, it's invalid
+            if not looks_like_url:
+                logger.info(f"Invalid repository URL provided: {repo_url_input}")
+                print()
+                print("That doesn't look like a valid repository URL. Let me start over.")
+                print()
+                raise RestartFlowException("Invalid repository URL provided")
+            
+            # User provided a valid-looking URL
+            repo_url = repo_url_input
+            logger.info(f"Repo URL provided: {repo_url}")
+            
+            # Step 4 & 5: ask for credential usage with intent detection
+            print()
+            print("Okay, can I use your credentials in my context to pull the repo?")
+            credential_response = input("Your response: ").strip()
+            
+            # Detect intent using conversational cues
+            normalized_response = credential_response.lower()
+            granted = None  # None means unclear intent
+            
+            if not normalized_response:
+                # Empty response defaults to yes for demo flow
+                granted = True
+            else:
+                # Check for affirmative cues first
+                for cue in AFFIRMATIVE_CUES:
+                    if cue in normalized_response:
+                        granted = True
+                        break
+                
+                # If no affirmative found, check for negative cues
+                if granted is None:
+                    for cue in NEGATIVE_CUES:
+                        if cue in normalized_response:
+                            granted = False
+                            break
+                
+                # If intent is still unclear, default to yes for demo flow
+                if granted is None:
+                    granted = True
+            
+            if not granted:
+                logger.info("User declined to grant credential access")
+                print()
+                print("In that case, I won't be able to pull the repo. Is there anything else you need help with?")
+                print()
+                raise RestartFlowException("User declined credential access")
+            
+            print("Great, thanks for granting access.")
+            logger.info("Repo access permission granted.")
+            
+            # Step 6: simulate pulling the repository before initializing the agent
+            print()
+            print(f"Perfect, let me pull {repo_url} and start debugging.")
+            print()
+            logger.info("Initializing agent...")
+            print("I'm initializing my debugging tools...")
+            print()
+            
+            # Create agent
+            try:
+                agent = create_agent(api_key)
+                logger.info("Agent created successfully")
+            except Exception as e:
+                error_msg = f"Error creating agent: {e}"
+                logger.exception(error_msg)
+                print(error_msg)
+                sys.exit(1)
+            
+            # Run agent
+            print("I'm analyzing the bug. This may take a moment...")
+            logger.info("Starting agent execution...")
+            print()
+            
+            response = run_agent(agent, bug_description)
+            logger.info("Agent execution completed")
+            print("=" * 60)
+            print("Here's what I found. Want to see the suggested fix?")
+            print("=" * 60)
+            input("Press Enter to view the diagnosis and suggested fix: ")
+            print()
+            logger.info("Agent Response:")
+            logger.info(response)
+            print(response)
+            print()
+            # After agent output, prompt for commit if files were modified
+            prompt_commit_for_pending_changes(response)
+            
+            # If we get here, everything completed successfully
+            break
+            
+        except RestartFlowException:
+            # User said no to a confirmation, restart from the beginning
+            print()
+            print("=" * 60)
+            print("I understand. Let me start over from the beginning.")
+            print("=" * 60)
+            print()
+            reset_applied_file_changes()
+            continue
+        except KeyboardInterrupt:
+            error_msg = "\n\nOperation cancelled by user."
+            logger.warning("Operation cancelled by user (KeyboardInterrupt)")
+            print(error_msg)
+            reset_applied_file_changes()
+            sys.exit(0)
+        except Exception as e:
+            error_msg = f"Error running agent: {e}"
+            logger.exception(error_msg)
+            print(error_msg)
+            reset_applied_file_changes()
+            sys.exit(1)
 
 
 if __name__ == "__main__":
