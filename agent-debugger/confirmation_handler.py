@@ -143,7 +143,7 @@ def ask_confirmation(prompt: str, default: bool = False) -> bool:
     print("CONVERSATIONAL CHECK-IN")
     print("=" * 80)
     print(prompt)
-    print("\nFeel free to respond conversationally (e.g., 'yeah sure', 'looks good to me').")
+    # print("\nFeel free to respond conversationally (e.g., 'yeah sure', 'looks good to me').")
     
     response = input("Your response: ")
     result = _interpret_conversational_response(response, default)
