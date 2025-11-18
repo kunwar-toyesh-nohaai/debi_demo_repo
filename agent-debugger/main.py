@@ -71,7 +71,7 @@ def prompt_commit_for_pending_changes(agent_summary: Optional[str]) -> None:
         logger.info(f"- {path}")
 
     print("=" * 80)
-    print("Files modified during this session:")
+    print("The following files are pending commit. Please review and confirm.")
     print("=" * 80)
     for path in modified_files:
         print(f"- {path}")
@@ -110,6 +110,9 @@ def prompt_commit_for_pending_changes(agent_summary: Optional[str]) -> None:
     logger.info(f"Commit result: {result}")
     print(result)
     reset_applied_file_changes()
+    print("=" * 60)
+    print("Thanks for confirming those changes.")
+    print("=" * 60)
 
 def main():
     """Main CLI function."""
@@ -117,13 +120,12 @@ def main():
     logger.info("AI Code Debugging Agent")
     logger.info("=" * 60)
     logger.info("")
-    # Get bug description from user
-    print("Please describe the bug you'd like me to debug:")
-    print("(Press Enter twice or Ctrl+Z then Enter on Windows to finish)")
-    logger.info("Waiting for user input...")
+    # Step 1 & 2: greet and capture the bug description (with a default scenario)
+    print("Hi, I'm Debi. I do full stack development. What would you like me to help you with?")
     print()
-    
-    lines = []
+    print("Please describe the issue (press Enter twice to finish).")
+    print()
+    lines: List[str] = []
     try:
         while True:
             line = input()
@@ -132,7 +134,6 @@ def main():
             lines.append(line)
     except EOFError:
         pass
-    
     bug_description = "\n".join(lines).strip()
     
     if not bug_description:
@@ -144,6 +145,27 @@ def main():
     logger.info(f"Bug description received: {len(bug_description)} characters")
     logger.debug(f"Bug description: {bug_description}")
     
+    # Step 3: capture the repo URL (simulated)
+    print()
+    print("Can you give me the URL to the codebase that you're referring to?")
+    repo_url = ""
+    while not repo_url:
+        repo_url = input("Repository URL: ").strip()
+        if not repo_url:
+            print("I'll need the repository URL to continue.")
+    logger.info(f"Repo URL provided (simulated): {repo_url}")
+    
+    # Step 4 & 5: ask for credential usage (always assumed yes for emulation)
+    print()
+    print("Okay, can I use your credentials in my context to pull the repo?")
+    input("Type 'yes' to confirm and press Enter: ")
+    print("Great, thanks for granting access.")
+    logger.info("Repo access permission granted (simulated).")
+    
+    # Step 6: simulate pulling the repository before initializing the agent
+    print()
+    print(f"Perfect, let me pull {repo_url} and start debugging (simulated).")
+    logger.info(f"Simulated repository pull for {repo_url}")
     print()
     logger.info("Initializing agent...")
     print("Initializing agent...")
@@ -168,8 +190,10 @@ def main():
         response = run_agent(agent, bug_description)
         logger.info("Agent execution completed")
         print("=" * 60)
-        print("Agent Response:")
+        print("Here's what I found. Want to see the suggested fix?")
         print("=" * 60)
+        input("Press Enter to view the diagnosis and suggested fix: ")
+        print()
         logger.info("Agent Response:")
         logger.info(response)
         print(response)
