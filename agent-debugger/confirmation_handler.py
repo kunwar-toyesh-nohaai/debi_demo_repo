@@ -1,13 +1,54 @@
 """Confirmation handler for file writes and git commits."""
 
-import os
-import sys
-import subprocess
 import logging
-from typing import Optional, Tuple
+import os
+import subprocess
 from difflib import unified_diff
+from typing import Optional, Tuple
 
 logger = logging.getLogger("agent_debugger.confirmation")
+
+# Common conversational intents
+AFFIRMATIVE_CUES = {
+    "y",
+    "yes",
+    "yeah",
+    "yep",
+    "sure",
+    "sounds good",
+    "go ahead",
+    "do it",
+    "please do",
+    "absolutely",
+    "of course",
+    "looks good",
+    "looks good to me",
+    "ship it",
+    "confirm",
+    "okay",
+    "ok",
+    "k",
+    "kk",
+    "let's do it",
+    "let's go",
+    "make it happen",
+}
+
+NEGATIVE_CUES = {
+    "n",
+    "no",
+    "nah",
+    "nope",
+    "don't",
+    "do not",
+    "stop",
+    "hold on",
+    "wait",
+    "cancel",
+    "not yet",
+    "skip",
+    "maybe later",
+}
 
 
 def show_diff(file_path: str, old_content: str, new_content: str) -> str:
@@ -36,6 +77,52 @@ def show_diff(file_path: str, old_content: str, new_content: str) -> str:
     return ''.join(diff)
 
 
+def _interpret_conversational_response(response: str, default: bool) -> bool:
+    """Infer confirmation intent from free-form responses."""
+    normalized = response.strip().lower()
+
+    if not normalized:
+        return default
+
+    for cue in AFFIRMATIVE_CUES:
+        if cue in normalized:
+            return True
+
+    for cue in NEGATIVE_CUES:
+        if cue in normalized:
+            return False
+
+    # Fall back to default when intent is unclear
+    return default
+
+
+def _summarize_diff(diff: str) -> Tuple[int, int, str]:
+    """
+    Provide quick stats and touched sections extracted from the diff.
+
+    Returns:
+        Tuple of (added_lines, removed_lines, hunk_summary_text)
+    """
+    added = 0
+    removed = 0
+    hunks = []
+
+    for line in diff.splitlines():
+        if line.startswith("+++ ") or line.startswith("--- "):
+            continue
+        if line.startswith("+"):
+            added += 1
+        elif line.startswith("-"):
+            removed += 1
+        elif line.startswith("@@"):
+            hunks.append(line.strip())
+
+    hunk_summary = (
+        "\n".join(f"- {hunk}" for hunk in hunks) if hunks else "- Entire file (no specific hunks reported)"
+    )
+    return added, removed, hunk_summary
+
+
 def ask_confirmation(prompt: str, default: bool = False) -> bool:
     """
     Ask user for confirmation.
@@ -53,18 +140,15 @@ def ask_confirmation(prompt: str, default: bool = False) -> bool:
     logger.info(prompt)
     
     print("\n" + "=" * 80)
-    print("CONFIRMATION REQUESTED")
+    print("CONVERSATIONAL CHECK-IN")
     print("=" * 80)
     print(prompt)
+    print("\nFeel free to respond conversationally (e.g., 'yeah sure', 'looks good to me').")
     
-    if default:
-        response = input("Confirm? [Y/n]: ").strip().lower()
-        result = response != 'n'
-    else:
-        response = input("Confirm? [y/N]: ").strip().lower()
-        result = response == 'y'
+    response = input("Your response: ")
+    result = _interpret_conversational_response(response, default)
     
-    logger.info(f"User response: {response} -> {result}")
+    logger.info(f"User response: {response!r} -> {result}")
     print()
     
     return result
@@ -99,27 +183,40 @@ def confirm_file_write(file_path: str, new_content: str) -> Tuple[bool, Optional
     
     # Generate diff
     diff = show_diff(file_path, old_content, new_content)
+    added, removed, hunk_summary = _summarize_diff(diff)
     
-    # Log the diff
     logger.info("=" * 80)
     logger.info("PROPOSED FILE CHANGES")
     logger.info("=" * 80)
     logger.info(f"File: {file_path}")
     logger.info("\n" + diff)
     
-    # Show diff to user
-    prompt = f"""
-File: {file_path}
+    # Stage 1: make sure the user wants suggestions
+    suggestion_intro = f"""
+The agent believes the issue you reported stems from `{file_path}`.
+Would you like to review its suggestions before we touch the file?
+"""
+    wants_suggestions = ask_confirmation(suggestion_intro, default=True)
+    
+    if not wants_suggestions:
+        logger.warning(f"User declined suggestions for: {file_path}")
+        return False, "User declined to review the suggested fix"
+    
+    suggestions_text = f"""
+Suggested plan for `{file_path}`:
+- Adds approximately {added} line(s), removes {removed} line(s)
+- Touches these areas:
+{hunk_summary}
+
+Detailed diff:
+{'=' * 80}
+{diff or '(No textual diff – likely a new binary file)'}
 {'=' * 80}
 
-PROPOSED CHANGES:
-{diff}
-{'=' * 80}
-
-Do you want to apply these changes to {file_path}?
+Should I go ahead and apply these changes now?
 """
     
-    confirmed = ask_confirmation(prompt, default=False)
+    confirmed = ask_confirmation(suggestions_text, default=False)
     
     if confirmed:
         logger.info(f"User confirmed file write for: {file_path}")
@@ -198,7 +295,16 @@ COMMIT MESSAGE: {commit_message}
 Do you want to commit all changes with this message?
 """
     
-    confirmed = ask_confirmation(prompt, default=False)
+    conversational_prompt = f"""
+I'm ready to commit the latest fixes with the message:
+  "{commit_message}"
+
+{prompt}
+
+Does that sound good, or would you prefer to hold off?
+"""
+    
+    confirmed = ask_confirmation(conversational_prompt, default=False)
     
     if confirmed:
         logger.info(f"User confirmed git commit with message: {commit_message}")

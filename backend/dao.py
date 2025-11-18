@@ -1,5 +1,3 @@
-from __future__ import annotations
-
 from contextlib import contextmanager
 from dataclasses import asdict, dataclass
 from pathlib import Path
