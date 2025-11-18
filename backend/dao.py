@@ -327,7 +327,7 @@ class InterviewDAO:
 
     def add_feedback(self, interview_id: int, rating: int, notes: Optional[str] = None) -> Dict[str, Any]:
         with get_connection() as connection:
-            with connection.cursor() as cursor:
+            with connection.cursor(cursor_factory=RealDictCursor) as cursor: # Added cursor_factory here
                 cursor.execute(
                     """
                     INSERT INTO feedback (interview_id, rating, notes)
