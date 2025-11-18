@@ -7,7 +7,7 @@ from langchain_core.tools import Tool
 from langchain_core.prompts import PromptTemplate
 from langchain import hub
 from langchain_core.callbacks import BaseCallbackHandler
-from typing import List, Any, Dict
+from typing import List, Any, Dict, Optional
 
 from tools.file_tools import list_directory, read_file, write_file as _write_file
 from tools.git_tools import run_git_command, commit_changes as _commit_changes
@@ -36,6 +36,26 @@ def get_applied_file_changes() -> List[str]:
 def reset_applied_file_changes() -> None:
     """Clear the list of recorded file changes."""
     APPLIED_FILE_CHANGES.clear()
+
+
+def _extract_issue_summary(section: str) -> Optional[str]:
+    """
+    Normalize and extract the agent-provided issue summary block.
+    
+    The agent is expected to provide a block that begins with one of:
+    "ISSUE SUMMARY:", "ISSUE:", or "SUMMARY:". Any remaining text is
+    treated as the issue description we can surface to the user.
+    """
+    cleaned = section.strip()
+    if not cleaned:
+        return None
+    
+    upper_clean = cleaned.upper()
+    markers = ("ISSUE SUMMARY:", "ISSUE:", "SUMMARY:")
+    for marker in markers:
+        if upper_clean.startswith(marker):
+            return cleaned[len(marker):].strip()
+    return cleaned
 
 
 class LoggingCallbackHandler(BaseCallbackHandler):
@@ -139,8 +159,14 @@ def write_file_wrapper(input_str: str) -> str:
     """
     Wrapper for write_file that parses LangChain tool input and asks for confirmation.
     
-    Expected format: "FILEPATH: <path>\nCONTENT:\n<content>"
-    Or simpler: First line is path, rest is content.
+    Expected format: 
+        FILEPATH: <path>
+        ISSUE SUMMARY:
+        <why the change is needed / description of the bug>
+        CONTENT:
+        <content>
+    A legacy format of "<path>|<content>" is still accepted for backward compatibility,
+    but the ISSUE SUMMARY block is strongly encouraged so the user understands the fix.
     
     Args:
         input_str: String containing file path and content.
@@ -153,6 +179,7 @@ def write_file_wrapper(input_str: str) -> str:
     logger.info("=" * 80)
     logger.debug(f"Input received: {input_str[:200]}...")  # Log first 200 chars
     
+    issue_summary: Optional[str] = None
     lines = input_str.split('\n', 1)
     if len(lines) < 2:
         # Try alternative format: path|content
@@ -166,23 +193,38 @@ def write_file_wrapper(input_str: str) -> str:
         else:
             return "Error: Invalid format. Expected 'FILEPATH: <path>\\nCONTENT:\\n<content>' or '<path>|<content>'"
     else:
+        remainder = lines[1]
         # Parse FILEPATH: ... format
         if lines[0].startswith('FILEPATH:'):
             path = lines[0].replace('FILEPATH:', '').strip()
-            if lines[1].startswith('CONTENT:'):
-                content = lines[1].replace('CONTENT:', '', 1).lstrip('\n')
-            else:
-                content = lines[1]
         else:
-            # Simple format: first line is path, rest is content
             path = lines[0].strip()
-            content = lines[1] if len(lines) > 1 else ""
+        
+        # Detect optional issue summary block before CONTENT:
+        upper_remainder = remainder.upper()
+        content_marker = "CONTENT:"
+        issue_summary = None
+        content_section = remainder
+        
+        marker_index = upper_remainder.find(content_marker)
+        if marker_index != -1:
+            before_content = remainder[:marker_index]
+            content_section = remainder[marker_index + len(content_marker):]
+            issue_summary = _extract_issue_summary(before_content)
+        else:
+            issue_summary = None
+        
+        content = content_section.lstrip('\n')
     
     logger.info(f"Parsed file path: {path}")
     logger.debug(f"Content length: {len(content)} characters")
+    if issue_summary:
+        logger.debug(f"Issue summary provided: {issue_summary[:200]}{'...' if len(issue_summary) > 200 else ''}")
+    else:
+        logger.debug("No issue summary provided with write_file request")
     
     # Ask for confirmation before writing
-    confirmed, error = confirm_file_write(path, content)
+    confirmed, error = confirm_file_write(path, content, issue_summary)
     
     if not confirmed:
         if error:
@@ -255,7 +297,7 @@ def create_tools() -> List[Tool]:
         Tool(
             name="write_file",
             func=write_file_wrapper,
-            description="Write content to a file. This will show you the changes (diff) and ask for confirmation before writing. Input format: 'FILEPATH: <file_path>\\nCONTENT:\\n<file_content>' or '<file_path>|<file_content>'. The file_path should be relative to the current working directory. IMPORTANT: This tool will ask for user confirmation before making any changes."
+            description="Write content to a file. Always include an ISSUE SUMMARY block describing the bug before the CONTENT block so the user knows why the change is needed. Standard format: 'FILEPATH: <file_path>\\nISSUE SUMMARY:\\n<reasoning>\\nCONTENT:\\n<file_content>'. Older '<file_path>|<file_content>' fallback is supported but not preferred. The file_path should be relative to the current working directory. IMPORTANT: This tool will ask for user confirmation before making any changes."
         ),
         Tool(
             name="run_git_command",

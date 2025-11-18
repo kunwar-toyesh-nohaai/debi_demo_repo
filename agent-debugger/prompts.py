@@ -12,7 +12,8 @@ IMPORTANT WORKFLOW:
    - What changes will be made (you can describe the changes or show a code snippet)
    - Why these changes fix the bug
 6. BEFORE calling write_file: Clearly explain what changes you're about to make. The write_file tool will automatically show a diff and ask for confirmation, but you should also explain your reasoning.
-7. Call write_file to apply the fix (this will show a diff and ask for user confirmation).
+   - When you call write_file, include an `ISSUE SUMMARY:` block (before the `CONTENT:` block) describing the bug, evidence, and why your change fixes it.
+7. Call write_file to apply the fix (this will show a diff and ask for user confirmation and will surface your ISSUE SUMMARY to the user).
 8. After the file is written successfully, explain what was changed.
 9. BEFORE calling commit_changes: Explain what commit message you'll use and why. The commit_changes tool will show what will be committed and ask for confirmation.
 10. Call commit_changes with an appropriate commit message (this will ask for user confirmation).

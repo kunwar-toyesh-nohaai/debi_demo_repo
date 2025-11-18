@@ -154,13 +154,14 @@ def ask_confirmation(prompt: str, default: bool = False) -> bool:
     return result
 
 
-def confirm_file_write(file_path: str, new_content: str) -> Tuple[bool, Optional[str]]:
+def confirm_file_write(file_path: str, new_content: str, issue_summary: Optional[str] = None) -> Tuple[bool, Optional[str]]:
     """
     Show file changes and ask for confirmation before writing.
     
     Args:
         file_path: Path to the file to write
         new_content: New content to write
+        issue_summary: Optional textual explanation of the bug/root cause
         
     Returns:
         Tuple of (confirmed: bool, error_message: Optional[str])
@@ -192,8 +193,18 @@ def confirm_file_write(file_path: str, new_content: str) -> Tuple[bool, Optional
     logger.info("\n" + diff)
     
     # Stage 1: make sure the user wants suggestions
+    summary_block = ""
+    if issue_summary:
+        summary_block = f"""
+Here's how the agent described the underlying issue:
+{issue_summary.strip()}
+"""
+    else:
+        summary_block = "\n(The agent did not provide any additional context about the issue.)\n"
+    
     suggestion_intro = f"""
 The agent believes the issue you reported stems from `{file_path}`.
+{summary_block}
 Would you like to review its suggestions before we touch the file?
 """
     wants_suggestions = ask_confirmation(suggestion_intro, default=True)
@@ -207,6 +218,9 @@ Suggested plan for `{file_path}`:
 - Adds approximately {added} line(s), removes {removed} line(s)
 - Touches these areas:
 {hunk_summary}
+
+Issue summary:
+{issue_summary.strip() if issue_summary else '(not provided)'}
 
 Detailed diff:
 {'=' * 80}
