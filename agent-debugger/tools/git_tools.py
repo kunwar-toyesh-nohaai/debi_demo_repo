@@ -85,7 +85,17 @@ def commit_changes(message: str, cwd: str = ".") -> str:
         )
         
         if stage_result.returncode != 0:
-            error_msg = stage_result.stderr.strip() if stage_result.stderr else "Unknown error"
+            # Try to get error from stderr first, then stdout, then provide a generic message
+            error_msg = stage_result.stderr.strip() if stage_result.stderr else ""
+            if not error_msg and stage_result.stdout:
+                error_msg = stage_result.stdout.strip()
+            if not error_msg:
+                error_msg = f"Git add failed with return code {stage_result.returncode}"
+            
+            logger.error(f"Git staging failed: {error_msg}")
+            logger.debug(f"Git staging stdout: {stage_result.stdout}")
+            logger.debug(f"Git staging stderr: {stage_result.stderr}")
+            logger.debug(f"Git staging returncode: {stage_result.returncode}")
             return f"Error staging changes: {error_msg}"
         
         # Commit the changes
@@ -98,7 +108,23 @@ def commit_changes(message: str, cwd: str = ".") -> str:
         )
         
         if commit_result.returncode != 0:
-            error_msg = commit_result.stderr.strip() if commit_result.stderr else "Unknown error"
+            # Try to get error from stderr first, then stdout, then provide a generic message
+            error_msg = commit_result.stderr.strip() if commit_result.stderr else ""
+            stdout_msg = commit_result.stdout.strip() if commit_result.stdout else ""
+            
+            # Check for common git commit failure scenarios
+            combined_output = (error_msg + " " + stdout_msg).lower()
+            if "nothing to commit" in combined_output or "no changes" in combined_output:
+                error_msg = "Nothing to commit - working tree is clean (no changes detected)"
+            elif not error_msg and stdout_msg:
+                error_msg = stdout_msg
+            elif not error_msg:
+                error_msg = f"Git commit failed with return code {commit_result.returncode}"
+            
+            logger.error(f"Git commit failed: {error_msg}")
+            logger.debug(f"Git commit stdout: {commit_result.stdout}")
+            logger.debug(f"Git commit stderr: {commit_result.stderr}")
+            logger.debug(f"Git commit returncode: {commit_result.returncode}")
             return f"Error committing changes: {error_msg}"
         
         return f"Successfully committed changes with message: '{message}'"
