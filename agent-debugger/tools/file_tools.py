@@ -1,7 +1,11 @@
 """File manipulation tools for the debugging agent."""
 
+import logging
 import os
+import traceback
 from typing import List, Union
+
+logger = logging.getLogger("agent_debugger.file_tools")
 
 
 def list_directory(path: str) -> Union[List[str], str]:
@@ -24,9 +28,14 @@ def list_directory(path: str) -> Union[List[str], str]:
         items = os.listdir(path)
         return items
     except PermissionError as e:
-        return f"Error: Permission denied accessing '{path}': {str(e)}"
+        error_msg = f"Error: Permission denied accessing '{path}': {str(e)}"
+        logger.error(error_msg)
+        logger.debug(traceback.format_exc())
+        return error_msg
     except Exception as e:
-        return f"Error listing directory '{path}': {str(e)}"
+        error_msg = f"Error listing directory '{path}': {str(e)}"
+        logger.exception(f"Exception in list_directory: {error_msg}")
+        return error_msg
 
 
 def read_file(path: str) -> str:
@@ -50,11 +59,19 @@ def read_file(path: str) -> str:
             content = f.read()
         return content
     except PermissionError as e:
-        return f"Error: Permission denied reading '{path}': {str(e)}"
+        error_msg = f"Error: Permission denied reading '{path}': {str(e)}"
+        logger.error(error_msg)
+        logger.debug(traceback.format_exc())
+        return error_msg
     except UnicodeDecodeError as e:
-        return f"Error: Unable to decode file '{path}' as UTF-8. It may be a binary file: {str(e)}"
+        error_msg = f"Error: Unable to decode file '{path}' as UTF-8. It may be a binary file: {str(e)}"
+        logger.error(error_msg)
+        logger.debug(traceback.format_exc())
+        return error_msg
     except Exception as e:
-        return f"Error reading file '{path}': {str(e)}"
+        error_msg = f"Error reading file '{path}': {str(e)}"
+        logger.exception(f"Exception in read_file: {error_msg}")
+        return error_msg
 
 
 def write_file(path: str, content: str) -> str:
@@ -78,9 +95,17 @@ def write_file(path: str, content: str) -> str:
             f.write(content)
         return f"Successfully wrote content to '{path}'."
     except PermissionError as e:
-        return f"Error: Permission denied writing to '{path}': {str(e)}"
+        error_msg = f"Error: Permission denied writing to '{path}': {str(e)}"
+        logger.error(error_msg)
+        logger.debug(traceback.format_exc())
+        return error_msg
     except OSError as e:
-        return f"Error: OS error writing to '{path}': {str(e)}"
+        error_msg = f"Error: OS error writing to '{path}': {str(e)}"
+        logger.error(error_msg)
+        logger.debug(traceback.format_exc())
+        return error_msg
     except Exception as e:
-        return f"Error writing file '{path}': {str(e)}"
+        error_msg = f"Error writing file '{path}': {str(e)}"
+        logger.exception(f"Exception in write_file: {error_msg}")
+        return error_msg
 

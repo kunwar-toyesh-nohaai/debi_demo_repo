@@ -182,7 +182,7 @@ def confirm_file_write(file_path: str, new_content: str, issue_summary: Optional
             logger.debug(f"Read existing file content ({len(old_content)} chars)")
         except Exception as e:
             error_msg = f"Error reading existing file: {e}"
-            logger.error(error_msg)
+            logger.exception(f"Exception in confirm_file_write while reading file: {error_msg}")
             return False, error_msg
     else:
         logger.info(f"File does not exist, will create new file: {file_path}")
@@ -306,7 +306,7 @@ CHANGES TO BE COMMITTED:
         prompt += f"\nDo you want to commit these changes with the message: '{commit_message}'?"
         
     except Exception as e:
-        logger.warning(f"Could not get git status: {e}")
+        logger.exception(f"Exception in confirm_git_commit while getting git status: {e}")
         prompt = f"""
 COMMIT MESSAGE: {commit_message}
 {'=' * 80}

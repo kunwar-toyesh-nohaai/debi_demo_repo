@@ -304,7 +304,7 @@ def main():
             sys.exit(0)
         except Exception as e:
             error_msg = f"Error running agent: {e}"
-            logger.exception(error_msg)
+            logger.exception(f"Exception in main loop: {error_msg}")
             print(error_msg)
             reset_applied_file_changes()
             sys.exit(1)

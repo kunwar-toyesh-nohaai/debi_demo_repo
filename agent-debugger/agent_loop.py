@@ -88,7 +88,8 @@ class LoggingCallbackHandler(BaseCallbackHandler):
                 self.logger.info(f"Tool: {tool_name}")
                 self.logger.info(f"Tool Input: {tool_input}")
                 self.logger.info("=" * 80)
-            except Exception:
+            except Exception as fallback_error:
+                self.logger.exception(f"Exception in on_agent_action fallback: {fallback_error}")
                 self.logger.info("=" * 80)
                 self.logger.info("AGENT ACTION (raw)")
                 self.logger.info("=" * 80)
@@ -114,7 +115,8 @@ class LoggingCallbackHandler(BaseCallbackHandler):
                     output = str(finish)
                 self.logger.info("Agent finished execution")
                 self.logger.debug(f"Agent output: {output}")
-            except Exception:
+            except Exception as fallback_error:
+                self.logger.exception(f"Exception in on_agent_finish fallback: {fallback_error}")
                 self.logger.debug(f"Agent Finish (raw): {finish}")
     
     def on_tool_start(self, serialized: Dict[str, Any], input_str: str, **kwargs: Any) -> None:
@@ -128,6 +130,7 @@ class LoggingCallbackHandler(BaseCallbackHandler):
             self.logger.info(f"Input: {input_str}")
             self.logger.info("=" * 80)
         except Exception as e:
+            self.logger.exception(f"Exception in on_tool_start: {e}")
             self.logger.info("=" * 80)
             self.logger.info("TOOL EXECUTION STARTED (raw)")
             self.logger.info("=" * 80)
@@ -142,6 +145,7 @@ class LoggingCallbackHandler(BaseCallbackHandler):
             self.logger.info(f"Output: {output}")
             self.logger.info("=" * 80)
         except Exception as e:
+            self.logger.exception(f"Exception in on_tool_end: {e}")
             self.logger.info("=" * 80)
             self.logger.info("TOOL EXECUTION COMPLETED (raw)")
             self.logger.info("=" * 80)
@@ -150,9 +154,9 @@ class LoggingCallbackHandler(BaseCallbackHandler):
     def on_tool_error(self, error: Exception, **kwargs: Any) -> None:
         """Log tool errors."""
         try:
-            self.logger.error(f"Tool error: {error}")
+            self.logger.exception(f"Tool error occurred: {error}")
         except Exception as e:
-            self.logger.error(f"Error logging tool error: {e}, original error: {error}")
+            self.logger.exception(f"Exception in on_tool_error while logging: {e}, original error: {error}")
 
 
 def write_file_wrapper(input_str: str) -> str:
@@ -354,7 +358,7 @@ def create_agent(api_key: str) -> AgentExecutor:
         prompt = prompt.partial(system_message=SYSTEM_PROMPT)
         logger.debug("Using standard ReAct prompt from hub")
     except Exception as e:
-        logger.debug(f"Could not pull prompt from hub ({e}), using custom prompt")
+        logger.exception(f"Exception while pulling prompt from hub: {e}, using custom prompt")
         # Create a custom prompt template for ReAct agent with system message
         prompt = PromptTemplate.from_template("""{system_message}
 

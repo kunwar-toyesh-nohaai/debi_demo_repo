@@ -1,6 +1,10 @@
 """Git operations tools for the debugging agent."""
 
+import logging
 import subprocess
+import traceback
+
+logger = logging.getLogger("agent_debugger.git_tools")
 
 
 def run_git_command(cmd: str, cwd: str = ".") -> str:
@@ -32,11 +36,19 @@ def run_git_command(cmd: str, cwd: str = ".") -> str:
         
         return result.stdout.strip() if result.stdout else "Command executed successfully (no output)."
     except subprocess.TimeoutExpired:
-        return f"Error: Git command '{cmd}' timed out after 30 seconds."
+        error_msg = f"Error: Git command '{cmd}' timed out after 30 seconds."
+        logger.error(error_msg)
+        logger.debug(traceback.format_exc())
+        return error_msg
     except FileNotFoundError:
-        return "Error: Git is not installed or not found in PATH."
+        error_msg = "Error: Git is not installed or not found in PATH."
+        logger.error(error_msg)
+        logger.debug(traceback.format_exc())
+        return error_msg
     except Exception as e:
-        return f"Error running git command '{cmd}': {str(e)}"
+        error_msg = f"Error running git command '{cmd}': {str(e)}"
+        logger.exception(f"Exception in run_git_command: {error_msg}")
+        return error_msg
 
 
 def commit_changes(message: str, cwd: str = ".") -> str:
@@ -91,9 +103,17 @@ def commit_changes(message: str, cwd: str = ".") -> str:
         
         return f"Successfully committed changes with message: '{message}'"
     except subprocess.TimeoutExpired:
-        return "Error: Git commit operation timed out."
+        error_msg = "Error: Git commit operation timed out."
+        logger.error(error_msg)
+        logger.debug(traceback.format_exc())
+        return error_msg
     except FileNotFoundError:
-        return "Error: Git is not installed or not found in PATH."
+        error_msg = "Error: Git is not installed or not found in PATH."
+        logger.error(error_msg)
+        logger.debug(traceback.format_exc())
+        return error_msg
     except Exception as e:
-        return f"Error committing changes: {str(e)}"
+        error_msg = f"Error committing changes: {str(e)}"
+        logger.exception(f"Exception in commit_changes: {error_msg}")
+        return error_msg
 
